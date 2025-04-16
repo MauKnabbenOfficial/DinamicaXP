@@ -3,6 +3,7 @@
 
 using System;
 using System.Globalization;
+using static System.Net.Mime.MediaTypeNames;
 
 var clientesPath = "";
 var pagamentosPath = "";
@@ -105,7 +106,8 @@ void buildRelatorio()
         contas.Add(new Conta
         {
             Id = cliente.Id,
-            Saldo = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == true).ToList().Sum(a => a.Value),
+            SaldoDevido = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == false).ToList().Sum(a => a.Value),
+            ValorPago = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == true).ToList().Sum(a => a.Value),
             Cliente = cliente
         });
     }
@@ -120,7 +122,7 @@ void result()
         foreach (var conta in contas)
         {
             if (conta.Cliente is null) continue;
-            string linha = $"ID: {conta.Cliente.Id}; {conta.Cliente.Name}; Valor Devido: {conta.Saldo};";
+            string linha = $"ID: {conta.Cliente.Id}; {conta.Cliente.Name}; Valor Devido: {conta.SaldoDevido};";
             writer.WriteLine(linha);
         }
 
@@ -142,6 +144,14 @@ void result()
             var valorRecebido = dia.Where(x => x.Pago == true).ToList().Sum(a => a.Value);
 
             string linha = $"DIA: {dia.First().Data.Date}\nValor à Receber: R${valorParaReceber}\nValor recebido: R${valorRecebido}\n";
+            writer.WriteLine(linha);
+        }
+
+        writer.WriteLine("PAGAMENTOS ENCONRADOS\n");
+        foreach (var conta in contas)
+        {
+            if (conta.Cliente is null) continue;
+            string linha = $"ID: {conta.Cliente.Id}; {conta.Cliente.Name}; Valor Pago: {conta.ValorPago}";
             writer.WriteLine(linha);
         }
 
@@ -199,6 +209,7 @@ class Pagamento
 class Conta
 {
     public int Id { get; set; }
-    public decimal Saldo { get; set; } = 0M;
+    public decimal ValorPago { get; set; } = 0M;
+    public decimal SaldoDevido { get; set; } = 0M;
     public Cliente Cliente { get; set; }
 }
