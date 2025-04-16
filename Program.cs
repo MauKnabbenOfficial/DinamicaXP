@@ -1,7 +1,8 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿    // See https://aka.ms/new-console-template for more information
 
 
 using System;
+using System.Globalization;
 
 var clientesPath = "";
 var pagamentosPath = "";
@@ -94,6 +95,7 @@ void buildRelatorio()
         {
             Value = decimal.Parse(campos[3]),
             Pago = campos[4] == "f" ? false : true,
+            Data = DateTime.ParseExact((campos[1].Length < 8 ? $"0{campos[1]}" : campos[1]), "ddMMyyyy", CultureInfo.InvariantCulture),
             Cliente = clientes.FirstOrDefault(x => x.Id == int.Parse(campos[0]))
         });
     }
@@ -130,6 +132,19 @@ void result()
             string linha = $"Valor: {pagamento.Value}; Pago: {(pagamento.Pago ? "Sim" : "Não")}";
             writer.WriteLine(linha);
         }
+
+        writer.WriteLine("\nCONTABILIDADE GERAL ORDENADA\n");
+
+        var agrupamento = pagamentos.OrderBy(x => x.Data).GroupBy(x => x.Data).ToList();
+        foreach(var dia in agrupamento)
+        {
+            var valorParaReceber = dia.Sum(x => x.Value);
+            var valorRecebido = dia.Where(x => x.Pago == true).ToList().Sum(a => a.Value);
+
+            string linha = $"DIA: {dia.First().Data.Date}\nValor à Receber: R${valorParaReceber}\nValor recebido: R${valorRecebido}\n";
+            writer.WriteLine(linha);
+        }
+
     }
 
     Console.WriteLine("Arquivo exportado com sucesso.");
@@ -176,6 +191,7 @@ class Pagamento
 {
     public decimal Value { get; set; }
     public bool Pago { get; set; }
+    public DateTime Data { get; set; }
     public Cliente Cliente { get; set; }
 
 }
