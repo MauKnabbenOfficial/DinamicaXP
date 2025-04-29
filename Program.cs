@@ -34,7 +34,8 @@ void main()
         Console.WriteLine("2 - Digitar caminho da TABELA PAGAMENTOS");
         Console.WriteLine("3 - Digitar caminho do arquivo resposta");
         Console.WriteLine("4 - Exportar arquivo");
-        Console.WriteLine("5 - Fechar o programa");
+        Console.WriteLine("5 - Sincronizar com Banco de Dados");
+        Console.WriteLine("6 - Fechar o programa");
         Console.Write("Opção: ");
         string opcao = Console.ReadLine();
 
@@ -62,8 +63,11 @@ void main()
                 buildRelatorio();
                 result();
                 break;
-
             case "5":
+                Console.WriteLine("Sincronizando com o Banco De Dados...");
+                sincronizarBD();
+                break;
+            case "6":
                 Console.WriteLine("Encerrando o programa...");
                 executando = false;
                 break;
@@ -75,6 +79,15 @@ void main()
     }
 }
 
+void sincronizarBD()
+{
+    if (!File.Exists(clientesPath) || !File.Exists(pagamentosPath))
+    {
+        Console.WriteLine("Arquivo(s) não encontrado(s).");
+        return;
+    }
+    buildRelatorio();
+}
 void buildRelatorio()
 {
     foreach (var linha in File.ReadLines(clientesPath))
