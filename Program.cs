@@ -1,7 +1,9 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿    // See https://aka.ms/new-console-template for more information
 
 
 using System;
+using System.Globalization;
+using static System.Net.Mime.MediaTypeNames;
 
 var clientesPath = "";
 var pagamentosPath = "";
@@ -94,6 +96,7 @@ void buildRelatorio()
         {
             Value = decimal.Parse(campos[3]),
             Pago = campos[4] == "f" ? false : true,
+            Data = DateTime.ParseExact((campos[1].Length < 8 ? $"0{campos[1]}" : campos[1]), "ddMMyyyy", CultureInfo.InvariantCulture),
             Cliente = clientes.FirstOrDefault(x => x.Id == int.Parse(campos[0]))
         });
     }
@@ -103,7 +106,8 @@ void buildRelatorio()
         contas.Add(new Conta
         {
             Id = cliente.Id,
-            Saldo = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == true).ToList().Sum(a => a.Value),
+            SaldoDevido = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == false).ToList().Sum(a => a.Value),
+            ValorPago = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == true).ToList().Sum(a => a.Value),
             Cliente = cliente
         });
     }
@@ -118,7 +122,7 @@ void result()
         foreach (var conta in contas)
         {
             if (conta.Cliente is null) continue;
-            string linha = $"ID: {conta.Cliente.Id}; {conta.Cliente.Name}; Valor Devido: {conta.Saldo};";
+            string linha = $"ID: {conta.Cliente.Id}; {conta.Cliente.Name}; Valor Devido: {conta.SaldoDevido};";
             writer.WriteLine(linha);
         }
 
@@ -130,6 +134,27 @@ void result()
             string linha = $"Valor: {pagamento.Value}; Pago: {(pagamento.Pago ? "Sim" : "Não")}";
             writer.WriteLine(linha);
         }
+
+        writer.WriteLine("\nCONTABILIDADE GERAL ORDENADA\n");
+
+        var agrupamento = pagamentos.OrderBy(x => x.Data).GroupBy(x => x.Data).ToList();
+        foreach(var dia in agrupamento)
+        {
+            var valorParaReceber = dia.Sum(x => x.Value);
+            var valorRecebido = dia.Where(x => x.Pago == true).ToList().Sum(a => a.Value);
+
+            string linha = $"DIA: {dia.First().Data.Date}\nValor à Receber: R${valorParaReceber}\nValor recebido: R${valorRecebido}\n";
+            writer.WriteLine(linha);
+        }
+
+        writer.WriteLine("PAGAMENTOS ENCONRADOS\n");
+        foreach (var conta in contas)
+        {
+            if (conta.Cliente is null) continue;
+            string linha = $"ID: {conta.Cliente.Id}; {conta.Cliente.Name}; Valor Pago: {conta.ValorPago}";
+            writer.WriteLine(linha);
+        }
+
     }
 
     Console.WriteLine("Arquivo exportado com sucesso.");
@@ -176,6 +201,7 @@ class Pagamento
 {
     public decimal Value { get; set; }
     public bool Pago { get; set; }
+    public DateTime Data { get; set; }
     public Cliente Cliente { get; set; }
 
 }
@@ -183,6 +209,7 @@ class Pagamento
 class Conta
 {
     public int Id { get; set; }
-    public decimal Saldo { get; set; } = 0M;
+    public decimal ValorPago { get; set; } = 0M;
+    public decimal SaldoDevido { get; set; } = 0M;
     public Cliente Cliente { get; set; }
 }
