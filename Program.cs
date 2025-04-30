@@ -1,9 +1,9 @@
-﻿    // See https://aka.ms/new-console-template for more information
+﻿// See https://aka.ms/new-console-template for more information
 
 
-using System;
+using DinamicaXP.Models;
+using DinamicaXP.Repository;
 using System.Globalization;
-using static System.Net.Mime.MediaTypeNames;
 
 var clientesPath = "";
 var pagamentosPath = "";
@@ -34,7 +34,8 @@ void main()
         Console.WriteLine("2 - Digitar caminho da TABELA PAGAMENTOS");
         Console.WriteLine("3 - Digitar caminho do arquivo resposta");
         Console.WriteLine("4 - Exportar arquivo");
-        Console.WriteLine("5 - Fechar o programa");
+        Console.WriteLine("5 - Sincronizar com Banco de Dados");
+        Console.WriteLine("6 - Fechar o programa");
         Console.Write("Opção: ");
         string opcao = Console.ReadLine();
 
@@ -62,8 +63,11 @@ void main()
                 buildRelatorio();
                 result();
                 break;
-
             case "5":
+                Console.WriteLine("Sincronizando com o Banco De Dados...");
+                sincronizarBD();
+                break;
+            case "6":
                 Console.WriteLine("Encerrando o programa...");
                 executando = false;
                 break;
@@ -75,42 +79,22 @@ void main()
     }
 }
 
+void sincronizarBD()
+{
+    if (!File.Exists(clientesPath) || !File.Exists(pagamentosPath))
+    {
+        Console.WriteLine("Arquivo(s) não encontrado(s).");
+        return;
+    }
+    buildRelatorio();
+}
 void buildRelatorio()
 {
-    foreach (var linha in File.ReadLines(clientesPath))
-    {
-        var campos = linha.Split(';');
+    using AppDbContext _dbContext = new AppDbContext();
 
-        clientes.Add(new Cliente
-        {
-            Id = int.Parse(campos[0]),
-            Name = campos[4]
-        });
-    }
-
-    foreach (var linha in File.ReadLines(pagamentosPath))
-    {
-        var campos = linha.Split(';');
-
-        pagamentos.Add(new Pagamento
-        {
-            Value = decimal.Parse(campos[3]),
-            Pago = campos[4] == "f" ? false : true,
-            Data = DateTime.ParseExact((campos[1].Length < 8 ? $"0{campos[1]}" : campos[1]), "ddMMyyyy", CultureInfo.InvariantCulture),
-            Cliente = clientes.FirstOrDefault(x => x.Id == int.Parse(campos[0]))
-        });
-    }
-
-    foreach (var cliente in clientes)
-    {
-        contas.Add(new Conta
-        {
-            Id = cliente.Id,
-            SaldoDevido = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == false).ToList().Sum(a => a.Value),
-            ValorPago = pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == true).ToList().Sum(a => a.Value),
-            Cliente = cliente
-        });
-    }
+    clientes = _dbContext.Clientes.ToList();
+    pagamentos = _dbContext.Pagamentos.ToList();
+    contas = _dbContext.Contas.ToList();
 }
 
 void result()
@@ -190,26 +174,4 @@ static void LerArquivo(string caminhoArquivo)
             }
         }
     }
-}
-class Cliente
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-}
-
-class Pagamento
-{
-    public decimal Value { get; set; }
-    public bool Pago { get; set; }
-    public DateTime Data { get; set; }
-    public Cliente Cliente { get; set; }
-
-}
-
-class Conta
-{
-    public int Id { get; set; }
-    public decimal ValorPago { get; set; } = 0M;
-    public decimal SaldoDevido { get; set; } = 0M;
-    public Cliente Cliente { get; set; }
 }
