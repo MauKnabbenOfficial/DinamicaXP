@@ -23,8 +23,8 @@ namespace DinamicaXP.Models
 
         [ForeignKey("Cliente")]
         [Column("cliente_id")]
-        public int ClienteId { get; set; }
+        public int? ClienteId { get; set; }
 
-        public Cliente Cliente { get; set; }
+        public virtual Cliente Cliente { get; set; }
     }
 }

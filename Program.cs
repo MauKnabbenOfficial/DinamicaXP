@@ -3,6 +3,7 @@
 
 using DinamicaXP.Models;
 using DinamicaXP.Repository;
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
 var clientesPath = "";
@@ -81,20 +82,99 @@ void main()
 
 void sincronizarBD()
 {
+
     if (!File.Exists(clientesPath) || !File.Exists(pagamentosPath))
     {
         Console.WriteLine("Arquivo(s) não encontrado(s).");
         return;
     }
-    buildRelatorio();
+
+    sincronizarClientes();
+    sincronizarPagamentos();
+    sincronizarContas();
+
+    Console.WriteLine("Dados sincronizados!");
+
 }
+
+void sincronizarClientes()
+{
+    using AppDbContext _dbContext = new AppDbContext();
+
+    foreach (var linha in File.ReadLines(clientesPath))
+    {
+        var campos = linha.Split(';');
+
+        clientes.Add(new Cliente
+        {
+            Id = int.Parse(campos[0]),
+            Name = campos[4]
+        });
+    }
+
+    _dbContext.AddRange(clientes);
+    _dbContext.SaveChanges();
+}
+
+void sincronizarPagamentos()
+{
+    using AppDbContext _dbContext = new AppDbContext();
+
+    var _clientes = _dbContext.Clientes.AsNoTracking().ToList();
+    var _pagamentos = new List<Pagamento>();
+
+    foreach (var linha in File.ReadLines(pagamentosPath))
+    {
+        var campos = linha.Split(';');
+
+        _pagamentos.Add(new Pagamento
+        {
+            Value = Decimal.Round(decimal.Parse(campos[3], CultureInfo.InvariantCulture), 2, MidpointRounding.AwayFromZero),
+            Pago = campos[4] == "f" ? false : true,
+            Data = DateTime.ParseExact((campos[1].Length < 8 ? $"0{campos[1]}" : campos[1]), "ddMMyyyy", CultureInfo.InvariantCulture),
+            //Cliente = _clientes.FirstOrDefault(x => x.Id == int.Parse(campos[0])),
+            ClienteId = _clientes.FirstOrDefault(x => x.Id == int.Parse(campos[0])) != null ? _clientes.FirstOrDefault(x => x.Id == int.Parse(campos[0])).Id : null
+        });
+    }
+
+    _dbContext.AddRange(_pagamentos);
+    _dbContext.SaveChanges();
+}
+
+void sincronizarContas()
+{
+    using AppDbContext _dbContext = new AppDbContext();
+
+    var _clientes = _dbContext.Clientes.AsNoTracking().ToList();
+    var _pagamentos = _dbContext.Pagamentos.AsNoTracking().ToList();
+    var _contas = new List<Conta>();
+
+    foreach (var cliente in _clientes)
+    {
+        _contas.Add(new Conta
+        {
+            SaldoDevido = Decimal.Round(_pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == false).ToList().Sum(a => a.Value), 2, MidpointRounding.AwayFromZero),
+            ValorPago = Decimal.Round(_pagamentos.Where(x => x.Cliente != null && x.Cliente.Equals(cliente) && x.Pago == true).ToList().Sum(a => a.Value), 2, MidpointRounding.AwayFromZero),
+            //Cliente = cliente,
+            ClienteId = cliente.Id
+        });
+    }
+
+    _dbContext.AddRange(_contas);
+    _dbContext.SaveChanges();
+}
+
 void buildRelatorio()
 {
     using AppDbContext _dbContext = new AppDbContext();
 
-    clientes = _dbContext.Clientes.ToList();
-    pagamentos = _dbContext.Pagamentos.ToList();
-    contas = _dbContext.Contas.ToList();
+    var clienteDB = _dbContext.Clientes.ToList();
+    var pagamentosDB = _dbContext.Pagamentos.ToList();
+    var contasDB = _dbContext.Contas.ToList();
+
+    clientes = clienteDB;
+    pagamentos = pagamentosDB;
+    contas = contasDB;
 }
 
 void result()
@@ -155,6 +235,7 @@ static void LerArquivo(string caminhoArquivo)
 
     string[] linhas = File.ReadAllLines(caminhoArquivo);
 
+#if DEBUG
     for (int numLinha = 0; numLinha < linhas.Length; numLinha++)
     {
         string linha = linhas[numLinha].Trim();
@@ -174,4 +255,6 @@ static void LerArquivo(string caminhoArquivo)
             }
         }
     }
+#endif
+
 }
