@@ -12,6 +12,7 @@ namespace DinamicaXP.Models
     public class Cliente
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.None)]
         [Column("id")]
         public int Id { get; set; }
 
@@ -19,8 +20,12 @@ namespace DinamicaXP.Models
         [Column("name")]
         public string Name { get; set; }
 
-        public ICollection<Pagamento> Pagamentos { get; set; }
-        public Conta Conta { get; set; }
+        [ForeignKey("Conta")]
+        [Column("conta_id")]
+        public int? ContaId { get; set; }
+
+        public virtual Conta Conta { get; set; }
+        public virtual ICollection<Pagamento> Pagamentos { get; set; }
     }
 }
 
